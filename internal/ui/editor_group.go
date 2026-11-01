@@ -2731,6 +2731,7 @@ func (g *EditorGroupWidget) syncTabs() {
 	}
 	if t.Content == nil {
 		if g.Editor.Buf != t.Buf {
+			g.Editor.Snippet = nil
 			g.Editor.maxWidthSeen = 0
 			if g.Editor.BracketPairColorization && len(t.Buf.Lines) > maxBracketColorLines {
 				g.notify("Bracket pair colorization disabled for large file")

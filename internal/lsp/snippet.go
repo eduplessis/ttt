@@ -1,5 +1,7 @@
 package lsp
 
+import "sort"
+
 // InsertTextFormat values from the LSP CompletionItem spec.
 const (
 	InsertTextFormatPlainText = 1
@@ -42,6 +44,32 @@ func (e SnippetExpansion) FirstStop() (SnippetStop, bool) {
 		}
 	}
 	return SnippetStop{}, false
+}
+
+// OrderedStops returns one stop per index in tab order. $0 comes last because
+// it is the final cursor position, not the first placeholder.
+func (e SnippetExpansion) OrderedStops() []SnippetStop {
+	byIndex := make(map[int]SnippetStop, len(e.Stops))
+	for _, stop := range e.Stops {
+		prev, ok := byIndex[stop.Index]
+		if !ok || stop.Offset < prev.Offset {
+			byIndex[stop.Index] = stop
+		}
+	}
+	stops := make([]SnippetStop, 0, len(byIndex))
+	for _, stop := range byIndex {
+		stops = append(stops, stop)
+	}
+	sort.Slice(stops, func(i, j int) bool {
+		if stops[i].Index == 0 {
+			return false
+		}
+		if stops[j].Index == 0 {
+			return true
+		}
+		return stops[i].Index < stops[j].Index
+	})
+	return stops
 }
 
 // ExpandSnippet turns an LSP snippet into plain text and the stops it

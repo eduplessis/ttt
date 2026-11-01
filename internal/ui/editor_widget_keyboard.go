@@ -10,6 +10,38 @@ import (
 func (e *EditorPaneWidget) handleKey(kev *tcell.EventKey) EventResult {
 	e.Cursor.Line = e.Buf.ClampLine(e.Cursor.Line)
 
+	if e.Snippet != nil {
+		switch kev.Key() {
+		case tcell.KeyTab:
+			if e.snippetNext() {
+				return EventConsumed
+			}
+		case tcell.KeyBacktab:
+			if e.snippetPrev() {
+				return EventConsumed
+			}
+			return EventConsumed
+		case tcell.KeyEscape:
+			e.snippetCancel()
+			return EventConsumed
+		case tcell.KeyRune, tcell.KeyBackspace, tcell.KeyBackspace2, tcell.KeyDelete:
+			// The edit is tracked after the switch.
+		default:
+			e.Snippet = nil
+		}
+		if e.Snippet != nil && kev.Modifiers()&(tcell.ModAlt|tcell.ModCtrl) != 0 {
+			e.Snippet = nil
+		}
+	}
+
+	var snippetEdit *snippetEditSnapshot
+	if e.Snippet != nil {
+		switch kev.Key() {
+		case tcell.KeyRune, tcell.KeyBackspace, tcell.KeyBackspace2, tcell.KeyDelete:
+			snippetEdit = e.beginSnippetEdit(kev.Key())
+		}
+	}
+
 	switch kev.Key() {
 	case tcell.KeyRune, tcell.KeyBackspace, tcell.KeyBackspace2, tcell.KeyDelete:
 	default:
@@ -293,6 +325,7 @@ func (e *EditorPaneWidget) handleKey(kev *tcell.EventKey) EventResult {
 		return EventIgnored
 	}
 
+	e.endSnippetEdit(snippetEdit)
 	e.clampCursor()
 	e.scrollViewport()
 	return EventConsumed

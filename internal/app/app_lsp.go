@@ -165,6 +165,7 @@ func (a *App) insertCompletion(item ui.CompletionItem, textEdit *lsp.TextEdit) {
 		return
 	}
 	editor := a.EditorGroup.Editor
+	editor.Snippet = nil
 
 	var text string
 	var startLine, startCol, endLine, endCol int
@@ -247,6 +248,18 @@ func (a *App) insertCompletion(item ui.CompletionItem, textEdit *lsp.TextEdit) {
 			editor.Cursor.Col = stopCol
 		}
 	}
+	if stops := snippet.OrderedStops(); len(stops) > 0 {
+		sessionStops := make([]ui.SnippetStop, 0, len(stops))
+		for _, stop := range stops {
+			stopLine, stopCol := snippetPosition(text, startLine, startCol, stop.Offset)
+			stopEndLine, stopEndCol := snippetPosition(text, startLine, startCol, stop.Offset+stop.Length)
+			sessionStops = append(sessionStops, ui.SnippetStop{
+				StartLine: stopLine, StartCol: stopCol,
+				EndLine: stopEndLine, EndCol: stopEndCol,
+			})
+		}
+		editor.Snippet = ui.NewSnippetSession(sessionStops)
+	}
 
 	for i := len(item.AdditionalEdits) - 1; i >= 0; i-- {
 		edit := item.AdditionalEdits[i]
@@ -279,6 +292,9 @@ func (a *App) insertCompletion(item ui.CompletionItem, textEdit *lsp.TextEdit) {
 			}
 			if editor.Selection != nil && editor.Selection.Active && edit.StartLine <= editor.Selection.Anchor.Line {
 				editor.Selection.Anchor.Line += linesAdded
+			}
+			if editor.Snippet != nil {
+				editor.Snippet.ShiftLines(edit.StartLine, linesAdded)
 			}
 		}
 	}

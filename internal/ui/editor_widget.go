@@ -39,6 +39,7 @@ type EditorPaneWidget struct {
 	hScrollPending          bool
 	Undo                    *undo.UndoStack
 	Selection               *selection.Selection
+	Snippet                 *SnippetSession
 	CursorX                 int
 	CursorY                 int
 	TabSize                 int

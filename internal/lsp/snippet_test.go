@@ -135,6 +135,23 @@ func TestExpandSnippetUnterminatedDefaultsTerminate(t *testing.T) {
 	}
 }
 
+func TestSnippetExpansionOrderedStops(t *testing.T) {
+	exp := ExpandSnippet(`${2:second} ${0:final} ${1:first} ${1:again}`)
+	stops := exp.OrderedStops()
+	if len(stops) != 3 {
+		t.Fatalf("stops = %#v, want 3", stops)
+	}
+	want := []int{1, 2, 0}
+	for i, stop := range stops {
+		if stop.Index != want[i] {
+			t.Fatalf("stop %d index = %d, want %d", i, stop.Index, want[i])
+		}
+	}
+	if stops[0].Offset != 13 {
+		t.Fatalf("duplicate index 1 offset = %d, want first occurrence at 13", stops[0].Offset)
+	}
+}
+
 func TestSnippetExpansionFirstStop(t *testing.T) {
 	tests := []struct {
 		name string

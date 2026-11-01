@@ -12,6 +12,9 @@ func (e *EditorPaneWidget) OwnsPointerCapture() bool {
 
 func (e *EditorPaneWidget) handleMouse(mev *tcell.EventMouse) EventResult {
 	btn := mev.Buttons()
+	if e.Snippet != nil && btn&(tcell.Button1|tcell.Button2|tcell.Button3) != 0 {
+		e.Snippet = nil
+	}
 
 	if !e.mouseDown {
 		if result, handled := e.handleScrollbarMouse(mev); handled {

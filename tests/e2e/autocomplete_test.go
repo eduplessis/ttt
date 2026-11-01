@@ -587,3 +587,93 @@ func TestAutocomplete_SnippetPlaceholder(t *testing.T) {
 		t.Fatalf("cursor = %d:%d, want 0:12", editor.Cursor.Line, editor.Cursor.Col)
 	}
 }
+
+func TestAutocomplete_SnippetTabStops(t *testing.T) {
+	h := setupAutocompleteTest(t, "\n")
+	defer h.stop()
+
+	editor := h.app.EditorGroup.Editor
+	h.app.ShowAutocomplete([]ui.CompletionItem{{
+		Label:            "tag",
+		InsertText:       `<${1:div} class="${2:name}">$0`,
+		InsertTextFormat: lsp.InsertTextFormatSnippet,
+	}}, nil)
+	h.redraw()
+	h.pressKey(tcell.KeyEnter, tcell.ModNone)
+
+	if got := editor.Buf.Lines[0]; got != `<div class="name">` {
+		t.Fatalf("buffer = %q, want %q", got, `<div class="name">`)
+	}
+	if !editor.Selection.Active || editor.Selection.Anchor.Col != 1 || editor.Cursor.Col != 4 {
+		t.Fatalf("first stop = %d..%d, want 1..4", editor.Selection.Anchor.Col, editor.Cursor.Col)
+	}
+
+	h.pressKey(tcell.KeyTab, tcell.ModNone)
+	if !editor.Selection.Active || editor.Selection.Anchor.Col != 12 || editor.Cursor.Col != 16 {
+		t.Fatalf("second stop = %d..%d, want 12..16", editor.Selection.Anchor.Col, editor.Cursor.Col)
+	}
+
+	h.pressKey(tcell.KeyTab, tcell.ModNone)
+	if editor.Selection.Active || editor.Cursor.Col != 18 {
+		t.Fatalf("final cursor = %d, active=%v; want 18, false", editor.Cursor.Col, editor.Selection.Active)
+	}
+
+	h.pressKey(tcell.KeyTab, tcell.ModNone)
+	if editor.Snippet != nil {
+		t.Fatal("Tab past the final stop must end the session")
+	}
+}
+
+func TestAutocomplete_SnippetTabAfterEditing(t *testing.T) {
+	h := setupAutocompleteTest(t, "\n")
+	defer h.stop()
+
+	editor := h.app.EditorGroup.Editor
+	h.app.ShowAutocomplete([]ui.CompletionItem{{
+		Label:            "tag",
+		InsertText:       `<${1:div} class="${2:name}">$0`,
+		InsertTextFormat: lsp.InsertTextFormatSnippet,
+	}}, nil)
+	h.redraw()
+	h.pressKey(tcell.KeyEnter, tcell.ModNone)
+
+	for _, r := range "span" {
+		h.pressRune(r)
+	}
+
+	if got := editor.Buf.Lines[0]; got != `<span class="name">` {
+		t.Fatalf("buffer = %q, want %q", got, `<span class="name">`)
+	}
+	h.pressKey(tcell.KeyTab, tcell.ModNone)
+	if !editor.Selection.Active || editor.Selection.Anchor.Col != 13 || editor.Cursor.Col != 17 {
+		t.Fatalf("shifted second stop = %d..%d, want 13..17", editor.Selection.Anchor.Col, editor.Cursor.Col)
+	}
+}
+
+func TestAutocomplete_SnippetShiftTabAndEscape(t *testing.T) {
+	h := setupAutocompleteTest(t, "\n")
+	defer h.stop()
+
+	editor := h.app.EditorGroup.Editor
+	h.app.ShowAutocomplete([]ui.CompletionItem{{
+		Label:            "tag",
+		InsertText:       `<${1:div} class="${2:name}">$0`,
+		InsertTextFormat: lsp.InsertTextFormatSnippet,
+	}}, nil)
+	h.redraw()
+	h.pressKey(tcell.KeyEnter, tcell.ModNone)
+
+	h.pressKey(tcell.KeyTab, tcell.ModNone)
+	h.pressKey(tcell.KeyBacktab, tcell.ModNone)
+	if !editor.Selection.Active || editor.Selection.Anchor.Col != 1 || editor.Cursor.Col != 4 {
+		t.Fatalf("back to first stop = %d..%d, want 1..4", editor.Selection.Anchor.Col, editor.Cursor.Col)
+	}
+
+	h.pressKey(tcell.KeyEscape, tcell.ModNone)
+	if editor.Snippet != nil {
+		t.Fatal("Escape must end the snippet session")
+	}
+	if editor.Selection.Active {
+		t.Fatal("Escape must clear the placeholder selection")
+	}
+}

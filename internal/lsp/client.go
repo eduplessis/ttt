@@ -193,7 +193,7 @@ func (c *Client) Initialize(rootURI string) error {
 			TextDocument: &TextDocumentClientCapabilities{
 				Completion: &CompletionClientCapabilities{
 					CompletionItem: &CompletionItemClientCapabilities{
-						SnippetSupport: false,
+						SnippetSupport: true,
 						ResolveSupport: &CompletionItemResolveSupport{
 							Properties: []string{"additionalTextEdits"},
 						},
